@@ -23,9 +23,9 @@ public class ScraperScheduler {
         LocalTime now = LocalTime.now();
         DayOfWeek day = LocalDate.now().getDayOfWeek();
 
-//        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
-//            return;
-//        }
+        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
+            return;
+        }
 
         int hour = now.getHour();
 

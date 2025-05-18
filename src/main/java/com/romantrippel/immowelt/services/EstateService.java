@@ -53,6 +53,7 @@ public class EstateService {
                     );
 
                     if (insertedRows > 0) {
+                        System.out.println("Sending Telegram message for estate: " + estateDto.headline());
                         telegramService.sendMessage(formatEstateMessage(estateDto));
                     }
 
