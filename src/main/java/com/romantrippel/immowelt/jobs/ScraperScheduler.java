@@ -4,6 +4,8 @@ import com.romantrippel.immowelt.services.EstateService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Random;
 
@@ -19,6 +21,12 @@ public class ScraperScheduler {
     @Scheduled(fixedRate = 15000)
     public void scheduledScraping() throws Exception {
         LocalTime now = LocalTime.now();
+        DayOfWeek day = LocalDate.now().getDayOfWeek();
+
+//        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
+//            return;
+//        }
+
         int hour = now.getHour();
 
         if (hour >= 6 && hour <= 22) {

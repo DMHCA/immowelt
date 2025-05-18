@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:invalid:ci
+    username: none
+    password: none
+  jpa:
+    hibernate:
+      ddl-auto: none
