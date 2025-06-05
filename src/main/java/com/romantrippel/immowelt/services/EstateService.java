@@ -31,7 +31,7 @@ public class EstateService {
         }
 
         estateDtoList.
-                stream().filter(estateDto -> estateDto.rooms() == roomCount).
+                stream().filter(estateDto -> estateDto.rooms() == roomCount || estateDto.rooms() == roomCount + 1).
                 forEach(estateDto -> {
                     EstateEntity entity = EstateEntity.fromDto(estateDto);
                     int insertedRows = estateRepository.insertIfNotExists(
