@@ -1,40 +1,39 @@
 package com.romantrippel.immowelt.jobs;
 
 import com.romantrippel.immowelt.services.EstateService;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Random;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
 @Component
 public class ScraperScheduler {
 
-    private final EstateService estateService;
+  private final EstateService estateService;
 
-    public ScraperScheduler(EstateService estateService) {
-        this.estateService = estateService;
+  public ScraperScheduler(EstateService estateService) {
+    this.estateService = estateService;
+  }
+
+  @Scheduled(fixedRate = 15000)
+  public void scheduledScraping() throws Exception {
+    LocalTime now = LocalTime.now();
+    DayOfWeek day = LocalDate.now().getDayOfWeek();
+
+    if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
+      return;
     }
 
-    @Scheduled(fixedRate = 15000)
-    public void scheduledScraping() throws Exception {
-        LocalTime now = LocalTime.now();
-        DayOfWeek day = LocalDate.now().getDayOfWeek();
+    int hour = now.getHour();
 
-        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
-            return;
-        }
+    if (hour >= 6 && hour <= 22) {
+      int delay = 12 + new Random().nextInt(5);
+      Thread.sleep(delay * 1000L);
 
-        int hour = now.getHour();
-
-        if (hour >= 6 && hour <= 22) {
-            int delay = 12 + new Random().nextInt(5);
-            Thread.sleep(delay * 1000L);
-
-            System.out.printf("📡 Starting scraping in %s sec...", delay);
-            estateService.processEstates();
-        }
+      System.out.printf("📡 Starting scraping in %s sec...", delay);
+      estateService.processEstates();
     }
+  }
 }
