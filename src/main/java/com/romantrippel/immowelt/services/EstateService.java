@@ -4,67 +4,66 @@ import com.romantrippel.immowelt.dto.EstateResponse;
 import com.romantrippel.immowelt.entities.EstateEntity;
 import com.romantrippel.immowelt.repositories.EstateRepository;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class EstateService {
 
+  private final int roomCount;
   private final WebScraper webScraper;
   private final TelegramService telegramService;
   private final EstateRepository estateRepository;
+  private final ExecutorService executor;
 
   public EstateService(
-      WebScraper webScraper, TelegramService telegramService, EstateRepository estateRepository) {
+      @Value("${ESTATE_FILTER_ROOM_COUNT}") int roomCount,
+      WebScraper webScraper,
+      TelegramService telegramService,
+      EstateRepository estateRepository,
+      ExecutorService executor) {
+    this.roomCount = roomCount;
     this.webScraper = webScraper;
     this.telegramService = telegramService;
     this.estateRepository = estateRepository;
+    this.executor = executor;
   }
 
   public void processEstates() {
-    int roomCount = 3;
     List<EstateResponse.EstateDto> estateDtoList;
 
     try {
       estateDtoList = webScraper.doScraping();
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      log.error("Error during web scraping", e);
+      return;
     }
 
-    estateDtoList.stream()
-        .filter(estateDto -> estateDto.rooms() == roomCount || estateDto.rooms() == roomCount + 1)
-        .forEach(
-            estateDto -> {
-              EstateEntity entity = EstateEntity.fromDto(estateDto);
-              int insertedRows =
-                  estateRepository.insertIfNotExists(
-                      entity.getGlobalObjectKey(),
-                      entity.getHeadline(),
-                      entity.getEstateType(),
-                      entity.getExposeUrl(),
-                      entity.getLivingArea(),
-                      entity.getImage(),
-                      entity.getImageHD(),
-                      entity.getCity(),
-                      entity.getZip(),
-                      entity.isShowMap(),
-                      entity.getStreet(),
-                      entity.getPriceName(),
-                      entity.getPriceValue(),
-                      entity.getRooms(),
-                      entity.getCreatedAt());
+    int delaySeconds = 0;
+    for (EstateResponse.EstateDto estateDto : estateDtoList) {
+      if (estateDto.rooms() == roomCount || estateDto.rooms() == roomCount + 1) {
+        EstateEntity entity = EstateEntity.fromDto(estateDto);
+        int insertedRows = estateRepository.insertIfNotExists(entity);
 
-              if (insertedRows > 0) {
-                System.out.println("Sending Telegram message for estate: " + estateDto.headline());
+        if (insertedRows > 0) {
+          int currentDelay = delaySeconds;
+          executor.submit(
+              () -> {
+                try {
+                  Thread.sleep(currentDelay * 1000L);
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                }
+                log.info("Sending Telegram message for estate: {}", estateDto.headline());
                 telegramService.sendMessage(formatEstateMessage(estateDto));
-              }
-
-              try {
-                Thread.sleep(1500);
-              } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Interrupted while sleeping", e);
-              }
-            });
+              });
+          delaySeconds += 2;
+        }
+      }
+    }
   }
 
   private String formatEstateMessage(EstateResponse.EstateDto estate) {

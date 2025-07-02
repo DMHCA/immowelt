@@ -1,12 +1,13 @@
 package com.romantrippel.immowelt.entities;
 
-import com.romantrippel.immowelt.dto.EstateResponse;
+import com.romantrippel.immowelt.dto.EstateResponse.EstateDto;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
@@ -33,9 +34,12 @@ public class EstateEntity {
   private String priceName;
   private String priceValue;
   private int rooms;
-  private LocalDateTime createdAt = LocalDateTime.now();
 
-  public static EstateEntity fromDto(EstateResponse.EstateDto dto) {
+  @CreatedDate
+  @Column(updatable = false)
+  private LocalDateTime createdAt;
+
+  public static EstateEntity fromDto(EstateDto dto) {
     return EstateEntity.builder()
         .globalObjectKey(dto.globalObjectKey())
         .headline(dto.headline())

@@ -3,11 +3,13 @@ package com.romantrippel.immowelt.services;
 import com.romantrippel.immowelt.dto.EstateResponse;
 import java.util.List;
 import java.util.Random;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class WebScraper {
 
@@ -40,10 +42,15 @@ public class WebScraper {
 
   public List<EstateResponse.EstateDto> doScraping() throws Exception {
     String userAgent = getRandomUserAgent();
-    Response response = prepareRequest(userAgent).execute();
 
-    EstateResponse.Root root = EstateResponse.fromJson(response.body());
-    return root.data().estateList().data();
+    try {
+      Response response = prepareRequest(userAgent).execute();
+      EstateResponse.Root root = EstateResponse.fromJson(response.body());
+      return root.data().estateList().data();
+    } catch (Exception e) {
+      log.error("Error during scraping request", e);
+      throw e;
+    }
   }
 
   private Connection prepareRequest(String userAgent) {

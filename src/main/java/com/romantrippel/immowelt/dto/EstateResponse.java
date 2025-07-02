@@ -6,6 +6,8 @@ import java.util.List;
 
 public class EstateResponse {
 
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record EstateDto(
       String headline,
@@ -31,7 +33,6 @@ public class EstateResponse {
   public record Root(Data data) {}
 
   public static Root fromJson(String json) throws Exception {
-    ObjectMapper objectMapper = new ObjectMapper();
-    return objectMapper.readValue(json, Root.class);
+    return MAPPER.readValue(json, Root.class);
   }
 }
