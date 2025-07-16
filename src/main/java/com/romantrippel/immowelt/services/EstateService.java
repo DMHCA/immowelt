@@ -13,19 +13,20 @@ import org.springframework.stereotype.Service;
 @Service
 public class EstateService {
 
-  private final int roomCount;
+  private final List<Integer> allowedRoomCounts;
   private final WebScraper webScraper;
   private final TelegramService telegramService;
   private final EstateRepository estateRepository;
   private final ExecutorService executor;
 
   public EstateService(
-      @Value("${ESTATE_FILTER_ROOM_COUNT}") int roomCount,
+      @Value("#{'${ESTATE_FILTER_ROOM_COUNTS}'.split(',')}") List<String> roomCountsRaw,
       WebScraper webScraper,
       TelegramService telegramService,
       EstateRepository estateRepository,
       ExecutorService executor) {
-    this.roomCount = roomCount;
+    this.allowedRoomCounts =
+        roomCountsRaw.stream().map(String::trim).map(Integer::parseInt).toList();
     this.webScraper = webScraper;
     this.telegramService = telegramService;
     this.estateRepository = estateRepository;
@@ -44,7 +45,7 @@ public class EstateService {
 
     int delaySeconds = 0;
     for (EstateResponse.EstateDto estateDto : estateDtoList) {
-      if (estateDto.rooms() == roomCount || estateDto.rooms() == roomCount + 1) {
+      if (allowedRoomCounts.contains(estateDto.rooms())) {
         EstateEntity entity = EstateEntity.fromDto(estateDto);
         int insertedRows = estateRepository.insertIfNotExists(entity);
 
@@ -67,19 +68,21 @@ public class EstateService {
   }
 
   private String formatEstateMessage(EstateResponse.EstateDto estate) {
-    return estate.imageHD()
-        + "\n"
-        + estate.headline()
-        + "\n"
-        + "Price: "
-        + estate.priceValue()
-        + "\n"
-        + "Rooms: "
-        + estate.rooms()
-        + "\n"
-        + "Living area: "
-        + estate.livingArea()
-        + " m²\n"
-        + estate.exposeUrl();
+    return """
+      <b>🏠 %s</b>
+      <b>📐 Living area:</b> %.2f m²
+      <b>💶 Cold rent:</b> %s
+      <b>🛏️ Rooms:</b> %d
+
+      <a href="%s">📸 View photos</a>
+      <a href="%s">🔗 Open listing</a>
+      """
+        .formatted(
+            estate.headline(),
+            estate.livingArea(),
+            estate.priceValue(),
+            estate.rooms(),
+            estate.imageHD(),
+            estate.exposeUrl());
   }
 }

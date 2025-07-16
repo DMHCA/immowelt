@@ -20,7 +20,15 @@ public class TelegramService {
 
   public void sendMessage(String message) {
     String endpoint = "/bot" + props.getToken() + "/sendMessage";
-    Map<String, String> payload = Map.of("chat_id", props.getChatId(), "text", message);
+    Map<String, String> payload =
+        Map.of(
+            "chat_id",
+            props.getChatId(),
+            "text",
+            message,
+            "parse_mode",
+            "HTML" // <-- вот это добавили
+            );
 
     telegramWebClient
         .post()
