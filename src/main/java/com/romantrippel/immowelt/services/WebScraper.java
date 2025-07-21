@@ -3,6 +3,8 @@ package com.romantrippel.immowelt.services;
 import com.romantrippel.immowelt.dto.EstateResponse;
 import java.util.List;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Response;
@@ -50,6 +52,44 @@ public class WebScraper {
     } catch (Exception e) {
       log.error("Error during scraping request", e);
       throw e;
+    }
+  }
+
+  public String extractGrundrissPdfUrl(String exposeUrl) {
+    String userAgent = getRandomUserAgent();
+    try {
+      Connection connection =
+          Jsoup.connect(exposeUrl)
+              .method(Connection.Method.GET)
+              .header("Accept", "*/*")
+              .header("Referer", "https://www.immowelt.de/")
+              .header("tenant", "immowelt")
+              .header("Sec-Fetch-Dest", "document")
+              .header("Sec-Fetch-Mode", "navigate")
+              .header("Sec-Fetch-Site", "none")
+              .header("sec-ch-ua", "\"Chromium\";v=\"133\", \"Google Chrome\";v=\"133\"")
+              .header("sec-ch-ua-mobile", "?0")
+              .header("sec-ch-ua-platform", "\"Linux\"")
+              .userAgent(userAgent)
+              .ignoreContentType(true);
+
+      Response response = connection.execute();
+      String body = response.body();
+
+      Pattern pattern =
+          Pattern.compile(
+              "\\\\\"url\\\\\":\\\\\"(https://[^\\\\\"]+?\\.pdf[^\\\\\"]*?)\\\\\",\\\\\"title\\\\\":\\\\\"Grundriss der ME\\\\\"");
+      Matcher matcher = pattern.matcher(body);
+      if (matcher.find()) {
+        return matcher.group(1);
+      }
+
+      log.warn("PDF 'Grundriss der ME' not found for URL: {}", exposeUrl);
+      return null;
+
+    } catch (Exception e) {
+      log.error("Error while extracting PDF from URL: {}", exposeUrl, e);
+      return null;
     }
   }
 

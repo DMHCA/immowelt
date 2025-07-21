@@ -83,4 +83,52 @@ class WebScraperTest {
       assertThrows(RuntimeException.class, () -> webScraper.doScraping());
     }
   }
+
+  @Test
+  void extractGrundrissPdfUrl_returnsPdfUrl_whenValidHtmlProvided() throws Exception {
+    String htmlWithPdf =
+        """
+            ...\\"url\\":\\"https://example.com/floorplan.pdf\\",\\"title\\":\\"Grundriss der ME\\"
+            """;
+
+    try (MockedStatic<Jsoup> jsoupMock = mockStatic(Jsoup.class)) {
+      Connection mockConnection = mock(Connection.class);
+      Response mockResponse = mock(Response.class);
+
+      jsoupMock.when(() -> Jsoup.connect(anyString())).thenReturn(mockConnection);
+      when(mockConnection.method(any())).thenReturn(mockConnection);
+      when(mockConnection.header(anyString(), anyString())).thenReturn(mockConnection);
+      when(mockConnection.userAgent(anyString())).thenReturn(mockConnection);
+      when(mockConnection.ignoreContentType(true)).thenReturn(mockConnection);
+      when(mockConnection.execute()).thenReturn(mockResponse);
+      when(mockResponse.body()).thenReturn(htmlWithPdf);
+
+      String result = webScraper.extractGrundrissPdfUrl("https://someurl.com");
+
+      assertNotNull(result);
+      assertEquals("https://example.com/floorplan.pdf", result);
+    }
+  }
+
+  @Test
+  void extractGrundrissPdfUrl_returnsNull_whenNoPdfFound() throws Exception {
+    String htmlWithoutPdf = "<html><body>No floorplan here</body></html>";
+
+    try (MockedStatic<Jsoup> jsoupMock = mockStatic(Jsoup.class)) {
+      Connection mockConnection = mock(Connection.class);
+      Response mockResponse = mock(Response.class);
+
+      jsoupMock.when(() -> Jsoup.connect(anyString())).thenReturn(mockConnection);
+      when(mockConnection.method(any())).thenReturn(mockConnection);
+      when(mockConnection.header(anyString(), anyString())).thenReturn(mockConnection);
+      when(mockConnection.userAgent(anyString())).thenReturn(mockConnection);
+      when(mockConnection.ignoreContentType(true)).thenReturn(mockConnection);
+      when(mockConnection.execute()).thenReturn(mockResponse);
+      when(mockResponse.body()).thenReturn(htmlWithoutPdf);
+
+      String result = webScraper.extractGrundrissPdfUrl("https://someurl.com");
+
+      assertNull(result);
+    }
+  }
 }

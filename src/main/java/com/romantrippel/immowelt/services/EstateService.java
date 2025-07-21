@@ -47,6 +47,10 @@ public class EstateService {
     for (EstateResponse.EstateDto estateDto : estateDtoList) {
       if (allowedRoomCounts.contains(estateDto.rooms())) {
         EstateEntity entity = EstateEntity.fromDto(estateDto);
+
+        var layoutUrl = webScraper.extractGrundrissPdfUrl(estateDto.exposeUrl());
+        entity.setApartmentLayoutUrl(layoutUrl);
+
         int insertedRows = estateRepository.insertIfNotExists(entity);
 
         if (insertedRows > 0) {
@@ -59,7 +63,7 @@ public class EstateService {
                   Thread.currentThread().interrupt();
                 }
                 log.info("Sending Telegram message for estate: {}", estateDto.headline());
-                telegramService.sendMessage(formatEstateMessage(estateDto));
+                telegramService.sendMessage(formatEstateMessage(entity));
               });
           delaySeconds += 2;
         }
@@ -67,22 +71,26 @@ public class EstateService {
     }
   }
 
-  private String formatEstateMessage(EstateResponse.EstateDto estate) {
+  private String formatEstateMessage(EstateEntity estate) {
     return """
-      <b>🏠 %s</b>
-      <b>📐 Living area:</b> %.2f m²
-      <b>💶 Cold rent:</b> %s
-      <b>🛏️ Rooms:</b> %d
+    <a href="%s">📸 View photo</a>
 
-      <a href="%s">📸 View photos</a>
-      <a href="%s">🔗 Open listing</a>
-      """
+    <b>🏠 %s</b>
+    <b>📐 Living area:</b> %.2f m²
+    <b>💶 Cold rent:</b> %s
+    <b>🛏️ Rooms:</b> %d
+
+    <a href="%s">📄 View apartment layout</a>
+
+    🔗 %s
+    """
         .formatted(
-            estate.headline(),
-            estate.livingArea(),
-            estate.priceValue(),
-            estate.rooms(),
-            estate.imageHD(),
-            estate.exposeUrl());
+            estate.getImage(),
+            estate.getHeadline(),
+            estate.getLivingArea(),
+            estate.getPriceValue(),
+            estate.getRooms(),
+            estate.getApartmentLayoutUrl(),
+            estate.getExposeUrl());
   }
 }

@@ -64,7 +64,7 @@ class EstateServiceTest {
     when(estate2.exposeUrl()).thenReturn("url2");
 
     EstateResponse.EstateDto estate3 = mock(EstateResponse.EstateDto.class);
-    when(estate3.rooms()).thenReturn(4);
+    when(estate3.rooms()).thenReturn(4); // not allowed
     when(estate3.headline()).thenReturn("Estate 3");
     when(estate3.imageHD()).thenReturn("img3");
     when(estate3.priceValue()).thenReturn("3000");
@@ -74,6 +74,9 @@ class EstateServiceTest {
     when(webScraper.doScraping()).thenReturn(List.of(estate1, estate2, estate3));
     when(estateRepository.insertIfNotExists(any(EstateEntity.class))).thenReturn(1);
 
+    when(webScraper.extractGrundrissPdfUrl("url1")).thenReturn("https://example.com/layout1.pdf");
+    when(webScraper.extractGrundrissPdfUrl("url2")).thenReturn("https://example.com/layout2.pdf");
+
     estateService.processEstates();
 
     ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
@@ -82,6 +85,8 @@ class EstateServiceTest {
     List<String> messages = messageCaptor.getAllValues();
     assertTrue(messages.get(0).contains("Estate 1"));
     assertTrue(messages.get(1).contains("Estate 2"));
+    assertTrue(messages.get(0).contains("https://example.com/layout1.pdf"));
+    assertTrue(messages.get(1).contains("https://example.com/layout2.pdf"));
   }
 
   @Test

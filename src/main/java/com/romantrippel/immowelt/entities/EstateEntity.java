@@ -34,6 +34,7 @@ public class EstateEntity {
   private String priceName;
   private String priceValue;
   private int rooms;
+  private String apartmentLayoutUrl;
 
   @CreatedDate
   @Column(updatable = false)
