@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -42,6 +43,18 @@ public class WebScraper {
         }
         """;
 
+  @Value("${proxy.enabled:false}")
+  private boolean proxyEnabled;
+
+  @Value("${proxy.host:}")
+  private String proxyHost;
+
+  @Value("${proxy.port:0}")
+  private int proxyPort;
+
+  @Value("${scraper.timeout:15000}")
+  private int timeout;
+
   public List<EstateResponse.EstateDto> doScraping() throws Exception {
     String userAgent = getRandomUserAgent();
 
@@ -61,20 +74,21 @@ public class WebScraper {
       Connection connection =
           Jsoup.connect(exposeUrl)
               .method(Connection.Method.GET)
-              .header("Accept", "*/*")
-              .header("Referer", "https://www.immowelt.de/")
-              .header("tenant", "immowelt")
-              .header("Sec-Fetch-Dest", "document")
-              .header("Sec-Fetch-Mode", "navigate")
-              .header("Sec-Fetch-Site", "none")
-              .header("sec-ch-ua", "\"Chromium\";v=\"133\", \"Google Chrome\";v=\"133\"")
-              .header("sec-ch-ua-mobile", "?0")
-              .header("sec-ch-ua-platform", "\"Linux\"")
               .userAgent(userAgent)
-              .ignoreContentType(true);
+              .header("Accept", "text/html,application/xhtml+xml")
+              .header("Accept-Language", "de-DE,de;q=0.9,en;q=0.8")
+              .header("Referer", "https://www.immowelt.de/")
+              .timeout(timeout)
+              .followRedirects(true)
+              .ignoreContentType(true)
+              .ignoreHttpErrors(true);
 
       Response response = connection.execute();
       String body = response.body();
+
+      if (response.statusCode() != 200) {
+        log.warn("Got status {} for URL: {}", response.statusCode(), exposeUrl);
+      }
 
       Pattern pattern =
           Pattern.compile(
@@ -94,22 +108,33 @@ public class WebScraper {
   }
 
   private Connection prepareRequest(String userAgent) {
-    return Jsoup.connect(TARGET_URL)
-        .method(Connection.Method.POST)
-        .header("Accept", "application/json, text/plain, */*")
-        .header("Content-Type", "application/json")
-        .header("Origin", "https://www.immowelt.de")
-        .header("Referer", "https://www.immowelt.de/")
-        .header("tenant", "immowelt")
-        .header("Sec-Fetch-Dest", "empty")
-        .header("Sec-Fetch-Mode", "cors")
-        .header("Sec-Fetch-Site", "same-site")
-        .header("sec-ch-ua", "\"Chromium\";v=\"133\", \"Google Chrome\";v=\"133\"")
-        .header("sec-ch-ua-mobile", "?0")
-        .header("sec-ch-ua-platform", "\"Linux\"")
-        .userAgent(userAgent)
-        .requestBody(JSON_BODY)
-        .ignoreContentType(true);
+    Connection connection =
+        Jsoup.connect(TARGET_URL)
+            .method(Connection.Method.POST)
+            .header("Accept", "application/json, text/plain, */*")
+            .header("Content-Type", "application/json")
+            .header("Origin", "https://www.immowelt.de")
+            .header("Referer", "https://www.immowelt.de/")
+            .header("tenant", "immowelt")
+            .header("Sec-Fetch-Dest", "empty")
+            .header("Sec-Fetch-Mode", "cors")
+            .header("Sec-Fetch-Site", "same-site")
+            .header("sec-ch-ua", "\"Chromium\";v=\"133\", \"Google Chrome\";v=\"133\"")
+            .header("sec-ch-ua-mobile", "?0")
+            .header("sec-ch-ua-platform", "\"Linux\"")
+            .userAgent(userAgent)
+            .requestBody(JSON_BODY)
+            .ignoreContentType(true)
+            .timeout(15000)
+            .followRedirects(true);
+
+    // TODO: use paid proxy later
+    // if (proxyEnabled && proxyHost != null && !proxyHost.isEmpty() && proxyPort > 0) {
+    //   connection = connection.proxy(proxyHost, proxyPort);
+    //   log.debug("Using proxy {}:{}", proxyHost, proxyPort);
+    // }
+
+    return connection;
   }
 
   private String getRandomUserAgent() {

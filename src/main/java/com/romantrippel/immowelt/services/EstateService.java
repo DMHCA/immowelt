@@ -48,7 +48,10 @@ public class EstateService {
       if (allowedRoomCounts.contains(estateDto.rooms())) {
         EstateEntity entity = EstateEntity.fromDto(estateDto);
 
-        var layoutUrl = webScraper.extractGrundrissPdfUrl(estateDto.exposeUrl());
+        // TODO: use paid proxy later
+        //        var layoutUrl = webScraper.extractGrundrissPdfUrl(estateDto.exposeUrl());
+
+        var layoutUrl = "N/A";
         entity.setApartmentLayoutUrl(layoutUrl);
 
         int insertedRows = estateRepository.insertIfNotExists(entity);

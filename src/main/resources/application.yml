@@ -25,3 +25,11 @@ logging:
 telegram:
   token: ${TELEGRAM_TOKEN}
   chat-id: ${TELEGRAM_CHAT_ID}
+
+proxy:
+  enabled: ${PROXY_ENABLED:false}
+  host: ${PROXY_HOST:}
+  port: ${PROXY_PORT:0}
+
+scraper:
+  timeout: ${SCRAPER_TIMEOUT:15000}
