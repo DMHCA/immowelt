@@ -46,7 +46,7 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.38</version>
+			<version>1.18.42</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -84,6 +84,11 @@
 			<artifactId>spring-boot-testcontainers</artifactId>
 			<version>3.2.5</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+			<version>11.17.0</version>
 		</dependency>
 	</dependencies>
 

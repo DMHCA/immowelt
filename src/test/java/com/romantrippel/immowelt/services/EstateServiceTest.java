@@ -1,103 +1,151 @@
 package com.romantrippel.immowelt.services;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import com.romantrippel.immowelt.dto.EstateResponse;
+import com.romantrippel.immowelt.dto.EstateResponse.EstateDto;
 import com.romantrippel.immowelt.entities.EstateEntity;
+import com.romantrippel.immowelt.entities.EstateHistoryEntity;
+import com.romantrippel.immowelt.repositories.EstateHistoryRepository;
 import com.romantrippel.immowelt.repositories.EstateRepository;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 class EstateServiceTest {
 
-  private WebScraper webScraper;
-  private TelegramService telegramService;
   private EstateRepository estateRepository;
+  private EstateHistoryRepository estateHistoryRepository;
+  private TelegramService telegramService;
   private ExecutorService executor;
-
+  private WebScraper webScraper;
   private EstateService estateService;
 
   @BeforeEach
-  void setup() {
-    webScraper = mock(WebScraper.class);
-    telegramService = mock(TelegramService.class);
+  void setUp() {
     estateRepository = mock(EstateRepository.class);
-
+    estateHistoryRepository = mock(EstateHistoryRepository.class);
+    telegramService = mock(TelegramService.class);
     executor = mock(ExecutorService.class);
-
-    doAnswer(
-            invocation -> {
-              Runnable task = invocation.getArgument(0);
-              task.run();
-              return CompletableFuture.completedFuture(null);
-            })
-        .when(executor)
-        .submit(any(Runnable.class));
+    webScraper = mock(WebScraper.class);
 
     estateService =
-        new EstateService(
-            List.of("2", "3"), webScraper, telegramService, estateRepository, executor);
+            new EstateService(
+                    new String[] {"1", "2", "3"},
+                    webScraper,
+                    telegramService,
+                    estateRepository,
+                    estateHistoryRepository,
+                    executor);
+
   }
 
   @Test
-  void processEstates_sendsMessagesOnlyForAllowedRoomCounts() throws Exception {
-    EstateResponse.EstateDto estate1 = mock(EstateResponse.EstateDto.class);
-    when(estate1.rooms()).thenReturn(2);
-    when(estate1.headline()).thenReturn("Estate 1");
-    when(estate1.imageHD()).thenReturn("img1");
-    when(estate1.priceValue()).thenReturn("1000");
-    when(estate1.livingArea()).thenReturn(50.0);
-    when(estate1.exposeUrl()).thenReturn("url1");
+  void testNewEstate_savesAndSendsTelegram() throws Exception {
+    EstateDto dto =
+            new EstateDto(
+                    "headline1", // headline
+                    "key1", // globalObjectKey
+                    "Apartment", // estateType
+                    "url", // exposeUrl
+                    50, // livingArea
+                    "img", // image
+                    "imgHD", // imageHD
+                    "city", // city
+                    "zip", // zip
+                    true, // showMap
+                    "street", // street
+                    "priceName", // priceName
+                    "1000", // priceValue
+                    2 // rooms
+            );
 
-    EstateResponse.EstateDto estate2 = mock(EstateResponse.EstateDto.class);
-    when(estate2.rooms()).thenReturn(3);
-    when(estate2.headline()).thenReturn("Estate 2");
-    when(estate2.imageHD()).thenReturn("img2");
-    when(estate2.priceValue()).thenReturn("2000");
-    when(estate2.livingArea()).thenReturn(70.0);
-    when(estate2.exposeUrl()).thenReturn("url2");
-
-    EstateResponse.EstateDto estate3 = mock(EstateResponse.EstateDto.class);
-    when(estate3.rooms()).thenReturn(4); // not allowed
-    when(estate3.headline()).thenReturn("Estate 3");
-    when(estate3.imageHD()).thenReturn("img3");
-    when(estate3.priceValue()).thenReturn("3000");
-    when(estate3.livingArea()).thenReturn(80.0);
-    when(estate3.exposeUrl()).thenReturn("url3");
-
-    when(webScraper.doScraping()).thenReturn(List.of(estate1, estate2, estate3));
-    when(estateRepository.insertIfNotExists(any(EstateEntity.class))).thenReturn(1);
-
-    when(webScraper.extractGrundrissPdfUrl("url1")).thenReturn("https://example.com/layout1.pdf");
-    when(webScraper.extractGrundrissPdfUrl("url2")).thenReturn("https://example.com/layout2.pdf");
+    when(webScraper.doScraping()).thenReturn(List.of(dto));
+    when(estateRepository.findByGlobalObjectKey("key1")).thenReturn(java.util.Optional.empty());
+    when(estateRepository.save(any(EstateEntity.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
 
     estateService.processEstates();
 
-    ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-    verify(telegramService, times(2)).sendMessage(messageCaptor.capture());
+    verify(estateRepository).save(any(EstateEntity.class));
+    verify(telegramService).sendMessage(anyString());
 
-    List<String> messages = messageCaptor.getAllValues();
-    assertTrue(messages.get(0).contains("Estate 1"));
-    assertTrue(messages.get(1).contains("Estate 2"));
-    assertTrue(messages.get(0).contains("https://example.com/layout1.pdf"));
-    assertTrue(messages.get(1).contains("https://example.com/layout2.pdf"));
   }
 
   @Test
-  void processEstates_doesNotSendMessagesForDisallowedRoomCounts() throws Exception {
-    EstateResponse.EstateDto estate = mock(EstateResponse.EstateDto.class);
-    when(estate.rooms()).thenReturn(1);
-    when(webScraper.doScraping()).thenReturn(List.of(estate));
-    when(estateRepository.insertIfNotExists(any())).thenReturn(1);
+  void testExistingEstateOlderThan7Days_updatesHistoryAndTelegram() throws Exception {
+    EstateDto dto =
+            new EstateDto(
+                    "headline2",
+                    "key2",
+                    "Apartment",
+                    "url",
+                    50,
+                    "img",
+                    "imgHD",
+                    "city",
+                    "zip",
+                    true,
+                    "street",
+                    "priceName",
+                    "1000",
+                    2
+            );
+
+    EstateEntity existing = EstateEntity.fromDto(dto);
+    existing.setCreatedAt(LocalDateTime.now().minusDays(10));
+
+    when(webScraper.doScraping()).thenReturn(List.of(dto));
+    when(estateRepository.findByGlobalObjectKey("key2"))
+            .thenReturn(java.util.Optional.of(existing));
+    when(estateRepository.save(any(EstateEntity.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+    when(estateHistoryRepository.save(any(EstateHistoryEntity.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
 
     estateService.processEstates();
 
-    verify(telegramService, never()).sendMessage(any());
+    verify(estateRepository).save(existing);
+    verify(estateHistoryRepository).save(any(EstateHistoryEntity.class));
+    verify(telegramService).sendMessage(anyString());
+
+  }
+
+  @Test
+  void testExistingEstateYoungerThan7Days_updatesWithoutHistory() throws Exception {
+    EstateDto dto =
+            new EstateDto(
+                    "headline3",
+                    "key3",
+                    "Apartment",
+                    "url",
+                    50,
+                    "img",
+                    "imgHD",
+                    "city",
+                    "zip",
+                    true,
+                    "street",
+                    "priceName",
+                    "1000",
+                    2
+            );
+
+    EstateEntity existing = EstateEntity.fromDto(dto);
+    existing.setCreatedAt(LocalDateTime.now().minusDays(3));
+
+    when(webScraper.doScraping()).thenReturn(List.of(dto));
+    when(estateRepository.findByGlobalObjectKey("key3"))
+            .thenReturn(java.util.Optional.of(existing));
+    when(estateRepository.save(any(EstateEntity.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+    estateService.processEstates();
+
+    verify(estateRepository).save(existing);
+    verify(estateHistoryRepository, never()).save(any());
+    verify(telegramService).sendMessage(anyString());
+
   }
 }

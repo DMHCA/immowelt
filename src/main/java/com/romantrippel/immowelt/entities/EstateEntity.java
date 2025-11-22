@@ -19,7 +19,12 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @EntityListeners(AuditingEntityListener.class)
 public class EstateEntity {
 
-  @Id private String globalObjectKey;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @Column(nullable = false, unique = true)
+  private String globalObjectKey;
 
   private String headline;
   private String estateType;

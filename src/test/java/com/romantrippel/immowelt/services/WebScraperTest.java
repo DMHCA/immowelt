@@ -24,33 +24,33 @@ class WebScraperTest {
   @Test
   void doScraping_returnsEstateList_whenResponseIsValid() throws Exception {
     String json =
-        """
-        {
-          "data": {
-            "estateList": {
-              "data": [
-                {
-                  "headline": "Test Estate",
-                  "globalObjectKey": "123",
-                  "estateType": "apartment",
-                  "salesType": "buy",
-                  "exposeUrl": "https://example.com",
-                  "city": "Berlin",
-                  "zip": "10115",
-                  "rooms": 3,
-                  "priceName": "Kaufpreis",
-                  "priceValue": 350000
+            """
+            {
+              "data": {
+                "estateList": {
+                  "data": [
+                    {
+                      "headline": "Test Estate",
+                      "globalObjectKey": "123",
+                      "estateType": "apartment",
+                      "salesType": "buy",
+                      "exposeUrl": "https://example.com",
+                      "city": "Berlin",
+                      "zip": "10115",
+                      "rooms": 3,
+                      "priceName": "Kaufpreis",
+                      "priceValue": 350000
+                    }
+                  ],
+                  "pagination": {
+                    "countPagination": 1,
+                    "countTotal": 1,
+                    "nextPage": null
+                  }
                 }
-              ],
-              "pagination": {
-                "countPagination": 1,
-                "countTotal": 1,
-                "nextPage": null
               }
             }
-          }
-        }
-        """;
+            """;
 
     try (MockedStatic<Jsoup> jsoupMock = mockStatic(Jsoup.class)) {
       Connection mockConnection = mock(Connection.class);
@@ -62,6 +62,8 @@ class WebScraperTest {
       when(mockConnection.userAgent(anyString())).thenReturn(mockConnection);
       when(mockConnection.requestBody(anyString())).thenReturn(mockConnection);
       when(mockConnection.ignoreContentType(true)).thenReturn(mockConnection);
+      when(mockConnection.timeout(anyInt())).thenReturn(mockConnection);
+      when(mockConnection.followRedirects(anyBoolean())).thenReturn(mockConnection);
       when(mockConnection.execute()).thenReturn(mockResponse);
       when(mockResponse.body()).thenReturn(json);
 
@@ -87,7 +89,7 @@ class WebScraperTest {
   @Test
   void extractGrundrissPdfUrl_returnsPdfUrl_whenValidHtmlProvided() throws Exception {
     String htmlWithPdf =
-        """
+            """
             ...\\"url\\":\\"https://example.com/floorplan.pdf\\",\\"title\\":\\"Grundriss der ME\\"
             """;
 
@@ -100,6 +102,8 @@ class WebScraperTest {
       when(mockConnection.header(anyString(), anyString())).thenReturn(mockConnection);
       when(mockConnection.userAgent(anyString())).thenReturn(mockConnection);
       when(mockConnection.ignoreContentType(true)).thenReturn(mockConnection);
+      when(mockConnection.timeout(anyInt())).thenReturn(mockConnection);
+      when(mockConnection.followRedirects(anyBoolean())).thenReturn(mockConnection);
       when(mockConnection.execute()).thenReturn(mockResponse);
       when(mockResponse.body()).thenReturn(htmlWithPdf);
 
@@ -112,17 +116,21 @@ class WebScraperTest {
 
   @Test
   void extractGrundrissPdfUrl_returnsNull_whenNoPdfFound() throws Exception {
-    String htmlWithoutPdf = "<html><body>No floorplan here</body></html>";
+    String htmlWithoutPdf = "No floorplan here";
 
     try (MockedStatic<Jsoup> jsoupMock = mockStatic(Jsoup.class)) {
       Connection mockConnection = mock(Connection.class);
       Response mockResponse = mock(Response.class);
 
       jsoupMock.when(() -> Jsoup.connect(anyString())).thenReturn(mockConnection);
+
       when(mockConnection.method(any())).thenReturn(mockConnection);
-      when(mockConnection.header(anyString(), anyString())).thenReturn(mockConnection);
       when(mockConnection.userAgent(anyString())).thenReturn(mockConnection);
+      when(mockConnection.header(anyString(), anyString())).thenReturn(mockConnection);
+      when(mockConnection.timeout(anyInt())).thenReturn(mockConnection);
+      when(mockConnection.followRedirects(anyBoolean())).thenReturn(mockConnection);
       when(mockConnection.ignoreContentType(true)).thenReturn(mockConnection);
+      when(mockConnection.ignoreHttpErrors(true)).thenReturn(mockConnection);
       when(mockConnection.execute()).thenReturn(mockResponse);
       when(mockResponse.body()).thenReturn(htmlWithoutPdf);
 
@@ -130,5 +138,7 @@ class WebScraperTest {
 
       assertNull(result);
     }
+    
   }
+
 }

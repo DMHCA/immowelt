@@ -67,7 +67,7 @@ SPRING_DATASOURCE_PASSWORD=your_password
 
 ### Run Tests
 ```bash
-./mvnw test
+./mvnw V2__add_id_primary_key_to_estates.sql
 ```
 
 ### Project Structure
