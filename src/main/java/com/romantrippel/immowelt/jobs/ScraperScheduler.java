@@ -25,7 +25,8 @@ public class ScraperScheduler {
 
   @Scheduled(fixedRate = SCRAPE_INTERVAL_MS)
   public void scheduledScraping() {
-    if (!shouldRun()) return;
+
+    //    if (!shouldRun()) return;
 
     int delay = ThreadLocalRandom.current().nextInt(RANDOM_DELAY_RANGE_SEC);
     log.debug("Scheduling scraping in {} seconds", delay);

@@ -31,9 +31,11 @@ telegram:
   chat-id: ${TELEGRAM_CHAT_ID}
 
 proxy:
-  enabled: ${PROXY_ENABLED:false}
-  host: ${PROXY_HOST:}
-  port: ${PROXY_PORT:0}
+  enabled: ${PROXY_ENABLED}
+  host: ${PROXY_HOST}
+  port: ${PROXY_PORT}
+  username: ${PROXY_USERNAME}
+  password: ${PROXY_PASSWORD}
 
 scraper:
   timeout: ${SCRAPER_TIMEOUT:15000}

@@ -4,7 +4,10 @@ import com.romantrippel.immowelt.config.TelegramProperties;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -47,6 +50,32 @@ public class TelegramService {
             e -> {
               log.error("Unexpected error while sending Telegram message", e);
             })
+        .subscribe();
+  }
+
+  public void sendDocument(byte[] fileBytes, String fileName, String caption) {
+    String endpoint = "/bot" + props.getToken() + "/sendDocument";
+
+    MultipartBodyBuilder builder = new MultipartBodyBuilder();
+    builder.part("chat_id", props.getChatId());
+    builder.part("caption", caption);
+    builder.part(
+        "document",
+        new ByteArrayResource(fileBytes) {
+          @Override
+          public String getFilename() {
+            return fileName;
+          }
+        });
+
+    telegramWebClient
+        .post()
+        .uri(endpoint)
+        .contentType(MediaType.MULTIPART_FORM_DATA)
+        .bodyValue(builder.build())
+        .retrieve()
+        .bodyToMono(String.class)
+        .doOnError(e -> log.error("Failed to send document", e))
         .subscribe();
   }
 }

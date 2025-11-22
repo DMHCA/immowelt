@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.romantrippel.immowelt.services.EstateService;
+import java.io.IOException;
 import java.time.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,7 +63,8 @@ class ScraperSchedulerTest {
   }
 
   @Test
-  void scheduledScraping_callsProcessEstates_whenShouldRunTrue() throws InterruptedException {
+  void scheduledScraping_callsProcessEstates_whenShouldRunTrue()
+      throws InterruptedException, IOException {
     // Given a fixed clock in allowed time window (weekday, 7:00)
     Clock fixedClock =
         Clock.fixed(LocalDateTime.of(2025, 7, 1, 7, 0).toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
@@ -78,7 +80,7 @@ class ScraperSchedulerTest {
   }
 
   @Test
-  void scheduledScraping_doesNotCallProcessEstates_whenShouldRunFalse() {
+  void scheduledScraping_doesNotCallProcessEstates_whenShouldRunFalse() throws IOException {
     ScraperScheduler schedulerSpy = Mockito.spy(new ScraperScheduler(estateService, fixedClock));
     doReturn(false).when(schedulerSpy).shouldRun();
 

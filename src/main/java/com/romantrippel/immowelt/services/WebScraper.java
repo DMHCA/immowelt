@@ -3,8 +3,6 @@ package com.romantrippel.immowelt.services;
 import com.romantrippel.immowelt.dto.EstateResponse;
 import java.util.List;
 import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Response;
@@ -68,45 +66,6 @@ public class WebScraper {
     }
   }
 
-  public String extractGrundrissPdfUrl(String exposeUrl) {
-    String userAgent = getRandomUserAgent();
-    try {
-      Connection connection =
-          Jsoup.connect(exposeUrl)
-              .method(Connection.Method.GET)
-              .userAgent(userAgent)
-              .header("Accept", "text/html,application/xhtml+xml")
-              .header("Accept-Language", "de-DE,de;q=0.9,en;q=0.8")
-              .header("Referer", "https://www.immowelt.de/")
-              .timeout(timeout)
-              .followRedirects(true)
-              .ignoreContentType(true)
-              .ignoreHttpErrors(true);
-
-      Response response = connection.execute();
-      String body = response.body();
-
-      if (response.statusCode() != 200) {
-        log.warn("Got status {} for URL: {}", response.statusCode(), exposeUrl);
-      }
-
-      Pattern pattern =
-          Pattern.compile(
-              "\\\\\"url\\\\\":\\\\\"(https://[^\\\\\"]+?\\.pdf[^\\\\\"]*?)\\\\\",\\\\\"title\\\\\":\\\\\"Grundriss der ME\\\\\"");
-      Matcher matcher = pattern.matcher(body);
-      if (matcher.find()) {
-        return matcher.group(1);
-      }
-
-      log.warn("PDF 'Grundriss der ME' not found for URL: {}", exposeUrl);
-      return null;
-
-    } catch (Exception e) {
-      log.error("Error while extracting PDF from URL: {}", exposeUrl, e);
-      return null;
-    }
-  }
-
   private Connection prepareRequest(String userAgent) {
     Connection connection =
         Jsoup.connect(TARGET_URL)
@@ -127,12 +86,6 @@ public class WebScraper {
             .ignoreContentType(true)
             .timeout(15000)
             .followRedirects(true);
-
-    // TODO: use paid proxy later
-    //    if (proxyEnabled && proxyHost != null && !proxyHost.isEmpty() && proxyPort > 0) {
-    //      connection = connection.proxy(proxyHost, proxyPort);
-    //      log.debug("Using proxy {}:{}", proxyHost, proxyPort);
-    //    }
 
     return connection;
   }

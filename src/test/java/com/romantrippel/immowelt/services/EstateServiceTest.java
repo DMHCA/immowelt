@@ -21,6 +21,7 @@ class EstateServiceTest {
   private ExecutorService executor;
   private WebScraper webScraper;
   private EstateService estateService;
+  private PdfDownloader pdfDownloader;
 
   @BeforeEach
   void setUp() {
@@ -29,6 +30,7 @@ class EstateServiceTest {
     telegramService = mock(TelegramService.class);
     executor = mock(ExecutorService.class);
     webScraper = mock(WebScraper.class);
+    pdfDownloader = mock(PdfDownloader.class);
 
     estateService =
         new EstateService(
@@ -37,7 +39,8 @@ class EstateServiceTest {
             telegramService,
             estateRepository,
             estateHistoryRepository,
-            executor);
+            executor,
+            pdfDownloader);
   }
 
   @Test
