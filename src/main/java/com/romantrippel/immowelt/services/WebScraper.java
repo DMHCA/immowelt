@@ -129,10 +129,10 @@ public class WebScraper {
             .followRedirects(true);
 
     // TODO: use paid proxy later
-    // if (proxyEnabled && proxyHost != null && !proxyHost.isEmpty() && proxyPort > 0) {
-    //   connection = connection.proxy(proxyHost, proxyPort);
-    //   log.debug("Using proxy {}:{}", proxyHost, proxyPort);
-    // }
+    //    if (proxyEnabled && proxyHost != null && !proxyHost.isEmpty() && proxyPort > 0) {
+    //      connection = connection.proxy(proxyHost, proxyPort);
+    //      log.debug("Using proxy {}:{}", proxyHost, proxyPort);
+    //    }
 
     return connection;
   }

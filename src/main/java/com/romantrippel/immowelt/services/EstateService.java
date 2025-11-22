@@ -54,69 +54,80 @@ public class EstateService {
     }
 
     int delaySeconds = 0;
+
     for (EstateResponse.EstateDto dto : estateDtoList) {
+
       if (!allowedRoomCounts.contains(dto.rooms())) continue;
 
       EstateEntity incoming = EstateEntity.fromDto(dto);
-      incoming.setApartmentLayoutUrl("N/A"); // TODO: extract layout later
+      incoming.setApartmentLayoutUrl("N/A");
 
-      boolean isNew =
-          estateRepository.findByGlobalObjectKey(incoming.getGlobalObjectKey()).isEmpty();
-      EstateEntity saved = saveOrUpdate(incoming);
+      EstateEntity existing =
+          estateRepository.findByGlobalObjectKey(incoming.getGlobalObjectKey()).orElse(null);
 
+      boolean isNew = existing == null;
       boolean sendTelegram = false;
 
       if (isNew) {
+        incoming.setCreatedAt(LocalDateTime.now());
+        EstateEntity savedNew = estateRepository.save(incoming);
         sendTelegram = true;
-      } else {
-        Duration duration = Duration.between(saved.getCreatedAt(), LocalDateTime.now());
-        if (duration.toDays() > 7) {
-          // save history
-          EstateHistoryEntity history = EstateHistoryEntity.fromEstate(saved);
-          estateHistoryRepository.save(history);
-          sendTelegram = true;
-        }
+        scheduleTelegram(dto, savedNew, delaySeconds);
+        delaySeconds += 2;
+        continue;
       }
 
+      Duration duration = Duration.between(existing.getCreatedAt(), LocalDateTime.now());
+
+      if (duration.toDays() > 7) {
+        EstateHistoryEntity history = EstateHistoryEntity.fromEstate(existing);
+        estateHistoryRepository.save(history);
+
+        existing.setCreatedAt(LocalDateTime.now());
+
+        sendTelegram = true;
+      }
+
+      updateExistingEstate(existing, incoming);
+      estateRepository.save(existing);
+
       if (sendTelegram) {
-        int currentDelay = delaySeconds;
-        executor.submit(
-            () -> {
-              try {
-                Thread.sleep(currentDelay * 1000L);
-              } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-              }
-              log.info("Sending Telegram message for estate: {}", dto.headline());
-              telegramService.sendMessage(formatEstateMessage(saved));
-            });
+        scheduleTelegram(dto, existing, delaySeconds);
         delaySeconds += 2;
       }
     }
   }
 
-  private EstateEntity saveOrUpdate(EstateEntity incoming) {
-    return estateRepository
-        .findByGlobalObjectKey(incoming.getGlobalObjectKey())
-        .map(
-            existing -> {
-              existing.setHeadline(incoming.getHeadline());
-              existing.setEstateType(incoming.getEstateType());
-              existing.setExposeUrl(incoming.getExposeUrl());
-              existing.setLivingArea(incoming.getLivingArea());
-              existing.setImage(incoming.getImage());
-              existing.setImageHD(incoming.getImageHD());
-              existing.setCity(incoming.getCity());
-              existing.setZip(incoming.getZip());
-              existing.setShowMap(incoming.isShowMap());
-              existing.setStreet(incoming.getStreet());
-              existing.setPriceName(incoming.getPriceName());
-              existing.setPriceValue(incoming.getPriceValue());
-              existing.setRooms(incoming.getRooms());
-              existing.setApartmentLayoutUrl(incoming.getApartmentLayoutUrl());
-              return estateRepository.save(existing);
-            })
-        .orElseGet(() -> estateRepository.save(incoming));
+  private void updateExistingEstate(EstateEntity existing, EstateEntity incoming) {
+    existing.setHeadline(incoming.getHeadline());
+    existing.setEstateType(incoming.getEstateType());
+    existing.setExposeUrl(incoming.getExposeUrl());
+    existing.setLivingArea(incoming.getLivingArea());
+    existing.setImage(incoming.getImage());
+    existing.setImageHD(incoming.getImageHD());
+    existing.setCity(incoming.getCity());
+    existing.setZip(incoming.getZip());
+    existing.setShowMap(incoming.isShowMap());
+    existing.setStreet(incoming.getStreet());
+    existing.setPriceName(incoming.getPriceName());
+    existing.setPriceValue(incoming.getPriceValue());
+    existing.setRooms(incoming.getRooms());
+    existing.setApartmentLayoutUrl(incoming.getApartmentLayoutUrl());
+  }
+
+  private void scheduleTelegram(
+      EstateResponse.EstateDto dto, EstateEntity saved, int delaySeconds) {
+    int currentDelay = delaySeconds;
+    executor.submit(
+        () -> {
+          try {
+            Thread.sleep(currentDelay * 1000L);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          log.info("Sending Telegram message for estate: {}", dto.headline());
+          telegramService.sendMessage(formatEstateMessage(saved));
+        });
   }
 
   private String formatEstateMessage(EstateEntity estate) {

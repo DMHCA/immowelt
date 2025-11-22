@@ -20,7 +20,7 @@ public class ScraperScheduler {
 
   private static final long SCRAPE_INTERVAL_MS = 52_000;
   private static final int START_HOUR = 6;
-  private static final int END_HOUR = 22;
+  private static final int END_HOUR = 23;
   private static final int RANDOM_DELAY_RANGE_SEC = 7;
 
   @Scheduled(fixedRate = SCRAPE_INTERVAL_MS)

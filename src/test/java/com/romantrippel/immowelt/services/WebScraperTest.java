@@ -24,7 +24,7 @@ class WebScraperTest {
   @Test
   void doScraping_returnsEstateList_whenResponseIsValid() throws Exception {
     String json =
-            """
+        """
             {
               "data": {
                 "estateList": {
@@ -89,7 +89,7 @@ class WebScraperTest {
   @Test
   void extractGrundrissPdfUrl_returnsPdfUrl_whenValidHtmlProvided() throws Exception {
     String htmlWithPdf =
-            """
+        """
             ...\\"url\\":\\"https://example.com/floorplan.pdf\\",\\"title\\":\\"Grundriss der ME\\"
             """;
 
@@ -138,7 +138,5 @@ class WebScraperTest {
 
       assertNull(result);
     }
-    
   }
-
 }
