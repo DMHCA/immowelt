@@ -2,6 +2,9 @@ package com.romantrippel.immowelt.services;
 
 import com.romantrippel.immowelt.config.TelegramProperties;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
@@ -20,6 +23,27 @@ public class TelegramService {
 
   private final WebClient telegramWebClient;
   private final TelegramProperties props;
+
+  private final ExecutorService rateLimiter = Executors.newSingleThreadExecutor();
+  private static final int DELAY_SECONDS = 2;
+
+  public void sendMessageRateLimited(String formattedMessage, byte[] pdf) {
+    rateLimiter.submit(
+        () -> {
+          try {
+            sendMessage(formattedMessage);
+
+            if (pdf != null && pdf.length > 0) {
+              sendDocument(pdf);
+            }
+
+            TimeUnit.SECONDS.sleep(DELAY_SECONDS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Rate-limited message interrupted", e);
+          }
+        });
+  }
 
   public void sendMessage(String message) {
     String endpoint = "/bot" + props.getToken() + "/sendMessage";
@@ -53,18 +77,18 @@ public class TelegramService {
         .subscribe();
   }
 
-  public void sendDocument(byte[] fileBytes, String fileName, String caption) {
+  public void sendDocument(byte[] fileBytes) {
     String endpoint = "/bot" + props.getToken() + "/sendDocument";
 
     MultipartBodyBuilder builder = new MultipartBodyBuilder();
     builder.part("chat_id", props.getChatId());
-    builder.part("caption", caption);
+    builder.part("caption", "Apartment layout");
     builder.part(
         "document",
         new ByteArrayResource(fileBytes) {
           @Override
           public String getFilename() {
-            return fileName;
+            return "Apartment_layout.pdf";
           }
         });
 

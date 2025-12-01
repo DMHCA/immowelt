@@ -9,7 +9,6 @@ import com.romantrippel.immowelt.repositories.EstateHistoryRepository;
 import com.romantrippel.immowelt.repositories.EstateRepository;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +17,6 @@ class EstateServiceTest {
   private EstateRepository estateRepository;
   private EstateHistoryRepository estateHistoryRepository;
   private TelegramService telegramService;
-  private ExecutorService executor;
   private WebScraper webScraper;
   private EstateService estateService;
   private PdfDownloader pdfDownloader;
@@ -28,7 +26,6 @@ class EstateServiceTest {
     estateRepository = mock(EstateRepository.class);
     estateHistoryRepository = mock(EstateHistoryRepository.class);
     telegramService = mock(TelegramService.class);
-    executor = mock(ExecutorService.class);
     webScraper = mock(WebScraper.class);
     pdfDownloader = mock(PdfDownloader.class);
 
@@ -39,7 +36,6 @@ class EstateServiceTest {
             telegramService,
             estateRepository,
             estateHistoryRepository,
-            executor,
             pdfDownloader);
   }
 

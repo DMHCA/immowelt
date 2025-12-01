@@ -10,7 +10,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,7 +22,6 @@ public class EstateService {
   private final EstateHistoryRepository estateHistoryRepository;
   private final WebScraper webScraper;
   private final TelegramService telegramService;
-  private final ExecutorService executor;
   private final PdfDownloader pdfDownloader;
 
   private final List<Integer> allowedRoomCounts;
@@ -34,7 +32,6 @@ public class EstateService {
       TelegramService telegramService,
       EstateRepository estateRepository,
       EstateHistoryRepository estateHistoryRepository,
-      ExecutorService executor,
       PdfDownloader pdfDownloader) {
 
     this.allowedRoomCounts =
@@ -44,13 +41,13 @@ public class EstateService {
     this.telegramService = telegramService;
     this.estateRepository = estateRepository;
     this.estateHistoryRepository = estateHistoryRepository;
-    this.executor = executor;
     this.pdfDownloader = pdfDownloader;
   }
 
   public void processEstates() throws IOException {
-    byte[] pdf = new byte[0];
+    byte[] pdf;
     List<EstateResponse.EstateDto> estateDtoList;
+
     try {
       estateDtoList = webScraper.doScraping();
     } catch (Exception e) {
@@ -58,53 +55,42 @@ public class EstateService {
       return;
     }
 
-    int delaySeconds = 0;
-
     for (EstateResponse.EstateDto dto : estateDtoList) {
 
       if (!allowedRoomCounts.contains(dto.rooms())) continue;
 
       EstateEntity incoming = EstateEntity.fromDto(dto);
-      incoming.setApartmentLayoutUrl("N/A");
 
       EstateEntity existing =
           estateRepository.findByGlobalObjectKey(incoming.getGlobalObjectKey()).orElse(null);
 
       boolean isNew = existing == null;
-      boolean sendTelegram = false;
 
       if (isNew) {
-        pdf = pdfDownloader.downloadPdfFromPage(existing.getExposeUrl());
-        existing.setZip(PdfDownloader.available);
+        pdf = pdfDownloader.downloadPdfFromPage(incoming.getExposeUrl());
+        incoming.setAvailability(PdfDownloader.available);
 
         incoming.setCreatedAt(LocalDateTime.now());
         EstateEntity savedNew = estateRepository.save(incoming);
-        sendTelegram = true;
-        scheduleTelegram(dto, savedNew, delaySeconds, pdf);
-        delaySeconds += 2;
+        scheduleTelegram(savedNew, pdf);
         continue;
       }
 
       Duration duration = Duration.between(existing.getCreatedAt(), LocalDateTime.now());
 
       if (duration.toDays() > 7) {
-        pdf = pdfDownloader.downloadPdfFromPage(existing.getExposeUrl());
-        existing.setZip(PdfDownloader.available);
-
         EstateHistoryEntity history = EstateHistoryEntity.fromEstate(existing);
         estateHistoryRepository.save(history);
 
+        pdf = pdfDownloader.downloadPdfFromPage(existing.getExposeUrl());
+        existing.setAvailability(PdfDownloader.available);
+
         existing.setCreatedAt(LocalDateTime.now());
 
-        sendTelegram = true;
-      }
+        scheduleTelegram(existing, pdf);
 
-      updateExistingEstate(existing, incoming);
-      estateRepository.save(existing);
-
-      if (sendTelegram) {
-        scheduleTelegram(dto, existing, delaySeconds, pdf);
-        delaySeconds += 2;
+        updateExistingEstate(existing, incoming);
+        estateRepository.save(existing);
       }
     }
   }
@@ -126,25 +112,10 @@ public class EstateService {
     existing.setApartmentLayoutUrl(incoming.getApartmentLayoutUrl());
   }
 
-  private void scheduleTelegram(
-      EstateResponse.EstateDto dto, EstateEntity saved, int delaySeconds, byte[] pdf) {
-    int currentDelay = delaySeconds;
-    executor.submit(
-        () -> {
-          try {
-            Thread.sleep(currentDelay * 1000L);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          }
-          log.info("Sending Telegram message for estate: {}", dto.headline());
-          telegramService.sendMessage(formatEstateMessage(saved));
+  private void scheduleTelegram(EstateEntity saved, byte[] pdf) {
+    log.info("Scheduling Telegram message for estate: {}", saved.getHeadline());
 
-          if (pdf != null && pdf.length > 0) {
-            String fileName = "Grundriss.pdf";
-            String caption = "Apartment layout";
-            telegramService.sendDocument(pdf, fileName, caption);
-          }
-        });
+    telegramService.sendMessageRateLimited(formatEstateMessage(saved), pdf);
   }
 
   private String formatEstateMessage(EstateEntity estate) {
@@ -156,17 +127,17 @@ public class EstateService {
         <b>💶 Cold rent:</b> %s
         <b>🛏️ Rooms:</b> %d
 
-        <a href="%s">📄 View apartment layout</a>
+        <b>🔑 Move-in date:</b> %s
 
         🔗 %s
         """
         .formatted(
-            estate.getImage(),
+            estate.getImageHD(),
             estate.getHeadline(),
             estate.getLivingArea(),
             estate.getPriceValue(),
             estate.getRooms(),
-            estate.getApartmentLayoutUrl(),
+            estate.getAvailability(),
             estate.getExposeUrl());
   }
 }

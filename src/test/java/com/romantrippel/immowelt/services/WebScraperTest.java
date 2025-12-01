@@ -3,6 +3,7 @@ package com.romantrippel.immowelt.services;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.romantrippel.immowelt.dto.EstateResponse;
 import java.util.List;
 import org.jsoup.Connection;
@@ -18,7 +19,7 @@ class WebScraperTest {
 
   @BeforeEach
   void setUp() {
-    webScraper = new WebScraper();
+    webScraper = new WebScraper(new ObjectMapper());
   }
 
   @Test
@@ -33,7 +34,6 @@ class WebScraperTest {
                       "headline": "Test Estate",
                       "globalObjectKey": "123",
                       "estateType": "apartment",
-                      "salesType": "buy",
                       "exposeUrl": "https://example.com",
                       "city": "Berlin",
                       "zip": "10115",

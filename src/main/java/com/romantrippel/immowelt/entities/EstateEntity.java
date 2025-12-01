@@ -3,10 +3,7 @@ package com.romantrippel.immowelt.entities;
 import com.romantrippel.immowelt.dto.EstateResponse.EstateDto;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
@@ -39,6 +36,7 @@ public class EstateEntity {
   private String priceValue;
   private int rooms;
   private String apartmentLayoutUrl;
+  private String availability;
 
   @Column(nullable = false)
   private LocalDateTime createdAt;

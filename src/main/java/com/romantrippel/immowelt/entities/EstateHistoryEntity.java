@@ -36,6 +36,7 @@ public class EstateHistoryEntity {
   private String priceValue;
   private int rooms;
   private String apartmentLayoutUrl;
+  private String availability;
 
   @Column(updatable = false)
   private LocalDateTime createdAt;
@@ -61,6 +62,7 @@ public class EstateHistoryEntity {
         .rooms(estate.getRooms())
         .apartmentLayoutUrl(estate.getApartmentLayoutUrl())
         .createdAt(estate.getCreatedAt())
+        .availability(estate.getAvailability())
         .build();
   }
 }

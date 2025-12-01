@@ -6,86 +6,106 @@ import static org.mockito.Mockito.*;
 import com.romantrippel.immowelt.services.EstateService;
 import java.io.IOException;
 import java.time.*;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.concurrent.ExecutorService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 class ScraperSchedulerTest {
 
-  private EstateService estateService;
-  private Clock fixedClock;
-  private ScraperScheduler scheduler;
-
-  @BeforeEach
-  void setup() {
-    estateService = mock(EstateService.class);
-    // fixed clock set to Wednesday 10:00
-    fixedClock =
-        Clock.fixed(
-            LocalDateTime.of(2024, 7, 1, 10, 0).toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
-    scheduler = new ScraperScheduler(estateService, fixedClock);
-  }
-
   @Test
   void shouldRun_returnsFalse_onWeekend() {
+    EstateService estateService = mock(EstateService.class);
     Clock weekendClock =
         Clock.fixed(
-            LocalDateTime.of(2024, 7, 6, 10, 0).toInstant(ZoneOffset.UTC),
-            ZoneId.of("UTC")); // Saturday
-    scheduler = new ScraperScheduler(estateService, weekendClock);
+            LocalDateTime.of(2024, 7, 6, 10, 0) // Saturday
+                .toInstant(ZoneOffset.ofHours(2)),
+            ZoneId.of("Europe/Berlin"));
+    ExecutorService executor = mock(ExecutorService.class);
+
+    ScraperScheduler scheduler = new ScraperScheduler(estateService, weekendClock, executor);
 
     assertFalse(scheduler.shouldRun());
   }
 
   @Test
   void shouldRun_returnsFalse_beforeStartHour() {
+    EstateService estateService = mock(EstateService.class);
     Clock earlyClock =
         Clock.fixed(
-            LocalDateTime.of(2024, 7, 1, 5, 59).toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
-    scheduler = new ScraperScheduler(estateService, earlyClock);
+            LocalDateTime.of(2024, 7, 1, 5, 59) // before 6:00
+                .toInstant(ZoneOffset.ofHours(2)),
+            ZoneId.of("Europe/Berlin"));
+    ExecutorService executor = mock(ExecutorService.class);
+
+    ScraperScheduler scheduler = new ScraperScheduler(estateService, earlyClock, executor);
 
     assertFalse(scheduler.shouldRun());
   }
 
   @Test
   void shouldRun_returnsFalse_afterEndHour() {
+    EstateService estateService = mock(EstateService.class);
     Clock lateClock =
         Clock.fixed(
-            LocalDateTime.of(2024, 7, 1, 23, 0).toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
-    scheduler = new ScraperScheduler(estateService, lateClock);
+            LocalDateTime.of(2024, 7, 1, 23, 1) // after 23:00
+                .toInstant(ZoneOffset.ofHours(2)),
+            ZoneId.of("Europe/Berlin"));
+    ExecutorService executor = mock(ExecutorService.class);
+
+    ScraperScheduler scheduler = new ScraperScheduler(estateService, lateClock, executor);
 
     assertFalse(scheduler.shouldRun());
   }
 
   @Test
   void shouldRun_returnsTrue_duringWorkingHoursOnWeekday() {
+    EstateService estateService = mock(EstateService.class);
+    Clock weekdayClock =
+        Clock.fixed(
+            LocalDateTime.of(2024, 7, 1, 10, 0) // Wednesday 10:00
+                .toInstant(ZoneOffset.ofHours(2)),
+            ZoneId.of("Europe/Berlin"));
+    ExecutorService executor = mock(ExecutorService.class);
+
+    ScraperScheduler scheduler = new ScraperScheduler(estateService, weekdayClock, executor);
+
     assertTrue(scheduler.shouldRun());
   }
 
   @Test
-  void scheduledScraping_callsProcessEstates_whenShouldRunTrue()
-      throws InterruptedException, IOException {
-    // Given a fixed clock in allowed time window (weekday, 7:00)
+  void scheduledScraping_callsProcessEstates_whenShouldRunTrue() throws IOException {
+    EstateService estateService = mock(EstateService.class);
     Clock fixedClock =
-        Clock.fixed(LocalDateTime.of(2025, 7, 1, 7, 0).toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
+        Clock.fixed(
+            LocalDateTime.of(2024, 7, 1, 7, 1) // during work hours
+                .toInstant(ZoneOffset.ofHours(2)),
+            ZoneId.of("Europe/Berlin"));
+    ExecutorService executor = mock(ExecutorService.class);
 
-    ScraperScheduler scheduler = new ScraperScheduler(estateService, fixedClock);
+    ScraperScheduler scheduler = new ScraperScheduler(estateService, fixedClock, executor);
 
     scheduler.scheduledScraping();
 
-    // Wait for async task to complete
-    Thread.sleep(4000);
-
-    verify(estateService, times(1)).processEstates();
+    // Проверяем, что задача была передана executor
+    verify(executor, times(1)).submit(any(Runnable.class));
   }
 
   @Test
   void scheduledScraping_doesNotCallProcessEstates_whenShouldRunFalse() throws IOException {
-    ScraperScheduler schedulerSpy = Mockito.spy(new ScraperScheduler(estateService, fixedClock));
-    doReturn(false).when(schedulerSpy).shouldRun();
+    EstateService estateService = mock(EstateService.class);
+    Clock fixedClock =
+        Clock.fixed(
+            LocalDateTime.of(2024, 7, 6, 10, 0) // Saturday
+                .toInstant(ZoneOffset.ofHours(2)),
+            ZoneId.of("Europe/Berlin"));
+    ExecutorService executor = mock(ExecutorService.class);
 
-    schedulerSpy.scheduledScraping();
+    ScraperScheduler scheduler =
+        Mockito.spy(new ScraperScheduler(estateService, fixedClock, executor));
+    doReturn(false).when(scheduler).shouldRun();
 
-    verify(estateService, never()).processEstates();
+    scheduler.scheduledScraping();
+
+    verify(executor, never()).submit(any(Runnable.class));
   }
 }
